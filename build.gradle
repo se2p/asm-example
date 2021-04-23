@@ -1,0 +1,108 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'com.github.sherter.google-java-format' version '0.8'
+    id 'jacoco'
+}
+
+import com.github.sherter.googlejavaformatgradleplugin.GoogleJavaFormat
+import com.github.sherter.googlejavaformatgradleplugin.VerifyGoogleJavaFormat
+
+group 'de.uni_passau.fim.se2'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'com.google.guava', name: 'guava', version: '27.1-jre'
+    compile group: 'org.ow2.asm', name: 'asm', version: '7.1'
+    compile group: 'org.ow2.asm', name: 'asm-commons', version: '7.1'
+    compile group: 'org.ow2.asm', name: 'asm-tree', version: '7.1'
+    compile group: 'org.ow2.asm', name: 'asm-analysis', version: '7.1'
+    compile group: 'org.ow2.asm', name: 'asm-util', version: '7.1'
+    compile group: 'org.javassist', name: 'javassist', version: '3.25.0-GA'
+
+    testCompile group: 'com.google.truth', name: 'truth', version: '0.44'
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.4.1'
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.4.1'
+    testCompile group: 'org.mockito', name: 'mockito-core', version: '2.27.0'
+    testCompile group: 'org.mockito', name: 'mockito-junit-jupiter', version: '2.27.0'
+    testCompile group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.2'
+
+    testRuntime group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.4.1'
+}
+
+jar {
+    archiveName = "${rootProject.name}-${rootProject.version}.jar"
+    manifest {
+        attributes(
+                'Main-Class': 'de.uni_passau.fim.se2.sa_examples.agent.SampleClass',
+                'Premain-Class': 'de.uni_passau.fim.se2.sa_examples.agent.SimpleAgent',
+                'Agent-Class': 'de.uni_passau.fim.se2.sa_examples.agent.SimpleAgent',
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true',
+                'Can-Set-Native-Method-Prefix': 'true',
+                'Implementation-Title': 'InstrumentationTransformer',
+                'Implementation-Version': rootProject.version,
+                'Built-By': System.getProperty('user.name'),
+                'Built-Date': new Date(),
+                'Built-JDK': System.getProperty('java.version')
+        )
+    }
+    from {
+        configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+        }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.3"
+    reportsDir = file("${buildDir}/jacoco")
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled = false
+        xml.setDestination(file("${buildDir}/jacoco/xml"))
+        csv.enabled = false
+        csv.setDestination(file("${buildDir}/jacoco/csv"))
+        html.enabled = false
+        html.setDestination(file("${buildDir}/jacoco/html"))
+    }
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+    jacoco {
+        enabled = true
+    }
+    finalizedBy(jacocoTestReport)
+}
+
+task format(type: GoogleJavaFormat) {
+    source = ['src/main', 'src/test']
+    include '**/*.java'
+}
+
+task verifyFormatting(type: VerifyGoogleJavaFormat) {
+    source = 'src/main'
+    include '**/*.java'
+    ignoreFailures false
+}
+
+compileJava.dependsOn(format)
+
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
